@@ -108,4 +108,9 @@ describe('HeroCard', () => {
     expect(zeroBadges.length).toBeGreaterThanOrEqual(2)
     expect(screen.queryByText('+0.0%')).not.toBeInTheDocument()
   })
+
+  it('shows explanation text in subtitle', () => {
+    render(<HeroCard result={mockResult} baseAmount={500} loading={false} error={null} onGenerate={vi.fn()} />)
+    expect(screen.getByText('Test explanation')).toBeInTheDocument()
+  })
 })

@@ -96,7 +96,7 @@ export function HeroCard({ result, baseAmount, loading, error, onGenerate, pctDa
           <p className="text-white/70 text-sm mt-2">
             {diffStr && `${diffStr} vs base · `}
             {Number(result.multiplier).toFixed(1)}× · {drawdownStr} drawdown ·{' '}
-            <span className="text-white/90">{result.rule_triggered}</span>
+            <span className="text-white/90">{result.explanation}</span>
           </p>
           <div className="flex items-center gap-2 mt-2">
             <PriceBadge label="1d" pct={pctDay} />
