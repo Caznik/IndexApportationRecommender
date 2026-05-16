@@ -132,3 +132,24 @@ describe('restoreRecommendation', () => {
     expect(useStore.getState().recommendationError).toBeNull()
   })
 })
+
+describe('markExecuted', () => {
+  const updatedRecord: RecommendationRecord = { ...mockRecord, executed_amount: 600 }
+
+  it('replaces matching record in history on success', async () => {
+    const other: RecommendationRecord = { ...mockRecord, id: 2 }
+    useStore.setState({ history: [mockRecord, other] })
+    mockApi.markExecuted.mockResolvedValue(updatedRecord)
+    await useStore.getState().markExecuted(1, 600)
+    const history = useStore.getState().history
+    expect(history[0]).toEqual(updatedRecord)
+    expect(history[1]).toEqual(other)
+  })
+
+  it('propagates error and leaves history unchanged on failure', async () => {
+    useStore.setState({ history: [mockRecord] })
+    mockApi.markExecuted.mockRejectedValue(new Error('HTTP 500'))
+    await expect(useStore.getState().markExecuted(1, 600)).rejects.toThrow('HTTP 500')
+    expect(useStore.getState().history[0]).toEqual(mockRecord)
+  })
+})

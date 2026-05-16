@@ -63,6 +63,17 @@ class RecommendationRecord(BaseModel):
     explanation: str
 
 
+class RecommendationRecordUpdate(BaseModel):
+    executed_amount: Decimal
+
+    @field_validator("executed_amount")
+    @classmethod
+    def must_be_positive(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("must be greater than 0")
+        return v
+
+
 class PricePoint(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

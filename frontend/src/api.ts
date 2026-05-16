@@ -73,3 +73,11 @@ export function getHistory(): Promise<RecommendationRecord[]> {
 export function getPriceHistory(): Promise<PricePoint[]> {
   return request('/api/market/history')
 }
+
+export function markExecuted(id: number, amount: number): Promise<RecommendationRecord> {
+  return request(`/api/history/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ executed_amount: amount }),
+  })
+}

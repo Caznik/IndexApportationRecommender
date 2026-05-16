@@ -20,6 +20,7 @@ interface State {
   historyLoading: boolean
   historyError: string | null
   fetchHistory: () => Promise<void>
+  markExecuted: (id: number, amount: number) => Promise<void>
 }
 
 export const useStore = create<State>((set, get) => ({
@@ -92,5 +93,11 @@ export const useStore = create<State>((set, get) => ({
     } catch (e) {
       set({ historyLoading: false, historyError: (e as Error).message })
     }
+  },
+  markExecuted: async (id: number, amount: number) => {
+    const updated = await api.markExecuted(id, amount)
+    set((s) => ({
+      history: s.history.map((r) => (r.id === id ? updated : r)),
+    }))
   },
 }))

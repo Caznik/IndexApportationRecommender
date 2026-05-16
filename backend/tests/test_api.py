@@ -1,8 +1,8 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from decimal import Decimal
 from unittest.mock import patch
 
-from app.models import MarketPrice, Settings
+from app.models import MarketPrice, Settings, Recommendation
 from app.schemas import PricePoint
 
 
@@ -116,3 +116,49 @@ def test_generate_recommendation_stored_in_history(client, db):
         r = client.get("/api/history")
     assert r.status_code == 200
     assert len(r.json()) == 1
+
+
+# --- PATCH History ---
+
+def _seed_recommendation(db):
+    rec = Recommendation(
+        created_at=datetime.now(timezone.utc),
+        ticker="URTH",
+        market_price=Decimal("97.40"),
+        drawdown=Decimal("-0.082000"),
+        drawdown_pct=Decimal("-8.20"),
+        multiplier=Decimal("1.20"),
+        rule_triggered="-5% band",
+        recommended_amount=Decimal("620.00"),
+        executed_amount=None,
+        explanation="Market is 8.2% below its 12-month high.",
+    )
+    db.add(rec)
+    db.commit()
+    db.refresh(rec)
+    return rec
+
+
+def test_patch_history_sets_executed_amount(client, db):
+    rec = _seed_recommendation(db)
+    r = client.patch(f"/api/history/{rec.id}", json={"executed_amount": "600.00"})
+    assert r.status_code == 200
+    assert r.json()["executed_amount"] == "600.00"
+    assert r.json()["id"] == rec.id
+
+
+def test_patch_history_returns_404_for_unknown_id(client, db):
+    r = client.patch("/api/history/999", json={"executed_amount": "600.00"})
+    assert r.status_code == 404
+
+
+def test_patch_history_returns_422_for_zero_amount(client, db):
+    rec = _seed_recommendation(db)
+    r = client.patch(f"/api/history/{rec.id}", json={"executed_amount": "0"})
+    assert r.status_code == 422
+
+
+def test_patch_history_returns_422_for_negative_amount(client, db):
+    rec = _seed_recommendation(db)
+    r = client.patch(f"/api/history/{rec.id}", json={"executed_amount": "-50"})
+    assert r.status_code == 422

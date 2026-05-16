@@ -88,6 +88,7 @@ No Docker required — tests use an in-memory SQLite database.
 | `GET` | `/api/settings` | Get current settings |
 | `PUT` | `/api/settings` | Update settings |
 | `GET` | `/api/history` | List all past recommendations |
+| `PATCH` | `/api/history/{id}` | Record the actual amount contributed for a recommendation |
 | `GET` | `/api/market/history` | Daily price history for configured ticker |
 
 ### 5. Set up and run the frontend

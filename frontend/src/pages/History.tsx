@@ -8,6 +8,7 @@ export function History() {
   const historyLoading = useStore((s) => s.historyLoading)
   const historyError = useStore((s) => s.historyError)
   const fetchHistory = useStore((s) => s.fetchHistory)
+  const markExecuted = useStore((s) => s.markExecuted)
   const [hasFetched, setHasFetched] = useState(false)
 
   useEffect(() => {
@@ -37,10 +38,10 @@ export function History() {
       {!historyLoading && !historyError && history.length > 0 && (
         <>
           <div className="block sm:hidden">
-            <HistoryCardList rows={history} />
+            <HistoryCardList rows={history} onMarkExecuted={markExecuted} />
           </div>
           <div className="hidden sm:block bg-surface-1 rounded-xl p-6">
-            <HistoryTable rows={history} />
+            <HistoryTable rows={history} onMarkExecuted={markExecuted} />
           </div>
         </>
       )}
