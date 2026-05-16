@@ -8,6 +8,7 @@ interface Props {
   onGenerate: () => void
   pctDay?: number | null
   pctMonth?: number | null
+  priceHistoryError?: boolean
 }
 
 function PriceBadge({ label, pct }: { label: string; pct: number | null | undefined }) {
@@ -32,7 +33,7 @@ function PriceBadge({ label, pct }: { label: string; pct: number | null | undefi
   )
 }
 
-export function HeroCard({ result, baseAmount, loading, error, onGenerate, pctDay, pctMonth }: Props) {
+export function HeroCard({ result, baseAmount, loading, error, onGenerate, pctDay, pctMonth, priceHistoryError }: Props) {
   if (loading) {
     return (
       <div className="rounded-xxl p-5 sm:p-8 bg-gradient-to-br from-grad-violet to-grad-magenta opacity-50 min-h-[160px] flex flex-col items-center justify-center">
@@ -96,9 +97,12 @@ export function HeroCard({ result, baseAmount, loading, error, onGenerate, pctDa
             {Number(result.multiplier).toFixed(1)}× · {drawdownStr} drawdown ·{' '}
             <span className="text-white/90">{result.rule_triggered}</span>
           </p>
-          <div className="flex gap-2 mt-2">
+          <div className="flex items-center gap-2 mt-2">
             <PriceBadge label="1d" pct={pctDay} />
             <PriceBadge label="1m" pct={pctMonth} />
+            {priceHistoryError && (
+              <span className="text-white/40 text-xs">· market data unavailable</span>
+            )}
           </div>
         </div>
         <button

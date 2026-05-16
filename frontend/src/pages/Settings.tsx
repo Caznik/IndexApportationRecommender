@@ -32,7 +32,7 @@ export function Settings() {
 
   useEffect(() => {
     if (!settings) fetchSettings()
-  }, [])
+  }, [settings, fetchSettings])
 
   useEffect(() => {
     if (settings) {

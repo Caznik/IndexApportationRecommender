@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint ."
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
@@ -17,9 +18,13 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/parser": "^8.59.3",
     "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^4.1.6",
     "autoprefixer": "^10.5.0",
+    "eslint": "^10.4.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.6.0",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.14",
     "tailwindcss": "^3.4.19",

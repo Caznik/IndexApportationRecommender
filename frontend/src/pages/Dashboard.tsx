@@ -17,16 +17,17 @@ export function Dashboard() {
 
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([])
   const [chartLoading, setChartLoading] = useState(false)
+  const [priceHistoryError, setPriceHistoryError] = useState(false)
 
   useEffect(() => {
     if (!settings) fetchSettings()
-  }, [])
+  }, [settings, fetchSettings])
 
   useEffect(() => {
     setChartLoading(true)
     getPriceHistory()
       .then(setPriceHistory)
-      .catch(() => {})
+      .catch(() => setPriceHistoryError(true))
       .finally(() => setChartLoading(false))
   }, [])
 
@@ -60,6 +61,7 @@ export function Dashboard() {
         onGenerate={generate}
         pctDay={pctDay}
         pctMonth={pctMonth}
+        priceHistoryError={priceHistoryError}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

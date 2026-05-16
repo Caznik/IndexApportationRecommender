@@ -12,7 +12,7 @@ export function History() {
 
   useEffect(() => {
     fetchHistory().finally(() => setHasFetched(true))
-  }, [])
+  }, [fetchHistory])
 
   return (
     <div>

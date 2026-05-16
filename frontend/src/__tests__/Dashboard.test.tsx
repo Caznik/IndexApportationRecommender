@@ -84,6 +84,15 @@ describe('Dashboard', () => {
     })
   })
 
+  it('shows market data unavailable when price history fetch fails', async () => {
+    useStore.setState({ recommendation: mockResult })
+    mockApi.getPriceHistory.mockRejectedValue(new Error('Network error'))
+    render(<Dashboard />)
+    await waitFor(() => {
+      expect(screen.getByText(/market data unavailable/i)).toBeInTheDocument()
+    })
+  })
+
   it('displays 1m price change badge when history spans 30+ days', async () => {
     useStore.setState({ recommendation: mockResult })
     mockApi.getPriceHistory.mockResolvedValue([
