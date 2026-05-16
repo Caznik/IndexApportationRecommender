@@ -4,9 +4,11 @@ import * as api from './api'
 
 interface State {
   recommendation: RecommendationResult | null
+  recommendationRestoredAt: string | null
   recommendationLoading: boolean
   recommendationError: string | null
   generate: () => Promise<void>
+  restoreRecommendation: () => Promise<void>
 
   settings: Settings | null
   settingsLoading: boolean
@@ -20,17 +22,40 @@ interface State {
   fetchHistory: () => Promise<void>
 }
 
-export const useStore = create<State>((set) => ({
+export const useStore = create<State>((set, get) => ({
   recommendation: null,
+  recommendationRestoredAt: null,
   recommendationLoading: false,
   recommendationError: null,
   generate: async () => {
     set({ recommendationLoading: true, recommendationError: null })
     try {
       const recommendation = await api.generateRecommendation()
-      set({ recommendation, recommendationLoading: false })
+      set({ recommendation, recommendationLoading: false, recommendationRestoredAt: null })
     } catch (e) {
       set({ recommendationLoading: false, recommendationError: (e as Error).message })
+    }
+  },
+  restoreRecommendation: async () => {
+    if (get().recommendation !== null) return
+    try {
+      const history = await api.getHistory()
+      if (history.length === 0) return
+      const latest = history[0]
+      set({
+        recommendation: {
+          current_price: latest.market_price,
+          drawdown: latest.drawdown,
+          drawdown_pct: latest.drawdown_pct,
+          multiplier: latest.multiplier,
+          recommended_amount: latest.recommended_amount,
+          rule_triggered: latest.rule_triggered,
+          explanation: latest.explanation,
+        },
+        recommendationRestoredAt: latest.created_at,
+      })
+    } catch {
+      // silent — restoration is best-effort; user can always click Generate
     }
   },
 

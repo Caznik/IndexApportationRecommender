@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useStore } from '../store'
 import * as api from '../api'
+import type { RecommendationResult, RecommendationRecord } from '../api'
 
 vi.mock('../api')
 const mockApi = vi.mocked(api)
@@ -9,12 +10,37 @@ const INITIAL: Partial<ReturnType<typeof useStore.getState>> = {
   recommendation: null,
   recommendationLoading: false,
   recommendationError: null,
+  recommendationRestoredAt: null,
   settings: null,
   settingsLoading: false,
   settingsError: null,
   history: [],
   historyLoading: false,
   historyError: null,
+}
+
+const mockResult: RecommendationResult = {
+  current_price: 97.4,
+  drawdown: -0.082,
+  drawdown_pct: -0.082,
+  multiplier: 1.2,
+  rule_triggered: '-5% band',
+  recommended_amount: 620,
+  explanation: '',
+}
+
+const mockRecord: RecommendationRecord = {
+  id: 1,
+  created_at: '2026-05-14T12:00:00',
+  ticker: 'URTH',
+  market_price: 97.4,
+  drawdown: -0.082,
+  drawdown_pct: -0.082,
+  multiplier: 1.2,
+  rule_triggered: '-5% band',
+  recommended_amount: 620,
+  executed_amount: null,
+  explanation: '',
 }
 
 beforeEach(() => {
@@ -29,6 +55,7 @@ describe('generate', () => {
     await useStore.getState().generate()
     expect(useStore.getState().recommendation).toEqual(result)
     expect(useStore.getState().recommendationLoading).toBe(false)
+    expect(useStore.getState().recommendationRestoredAt).toBeNull()
   })
 
   it('sets recommendationError on failure', async () => {
@@ -64,5 +91,44 @@ describe('fetchHistory', () => {
     mockApi.getHistory.mockResolvedValue(rows)
     await useStore.getState().fetchHistory()
     expect(useStore.getState().history).toEqual(rows)
+  })
+})
+
+describe('restoreRecommendation', () => {
+  it('does nothing when recommendation is already set', async () => {
+    useStore.setState({ recommendation: mockResult })
+    await useStore.getState().restoreRecommendation()
+    expect(mockApi.getHistory).not.toHaveBeenCalled()
+  })
+
+  it('does nothing when history is empty', async () => {
+    mockApi.getHistory.mockResolvedValue([])
+    await useStore.getState().restoreRecommendation()
+    expect(mockApi.getHistory).toHaveBeenCalledOnce()
+    expect(useStore.getState().recommendation).toBeNull()
+    expect(useStore.getState().recommendationRestoredAt).toBeNull()
+  })
+
+  it('restores recommendation from history[0]', async () => {
+    mockApi.getHistory.mockResolvedValue([mockRecord])
+    await useStore.getState().restoreRecommendation()
+    expect(useStore.getState().recommendation).toEqual({
+      current_price: mockRecord.market_price,
+      drawdown: mockRecord.drawdown,
+      drawdown_pct: mockRecord.drawdown_pct,
+      multiplier: mockRecord.multiplier,
+      recommended_amount: mockRecord.recommended_amount,
+      rule_triggered: mockRecord.rule_triggered,
+      explanation: mockRecord.explanation,
+    })
+    expect(useStore.getState().recommendationRestoredAt).toBe(mockRecord.created_at)
+  })
+
+  it('does not set error state when getHistory fails', async () => {
+    mockApi.getHistory.mockRejectedValue(new Error('network error'))
+    await useStore.getState().restoreRecommendation()
+    expect(useStore.getState().recommendation).toBeNull()
+    expect(useStore.getState().recommendationRestoredAt).toBeNull()
+    expect(useStore.getState().recommendationError).toBeNull()
   })
 })

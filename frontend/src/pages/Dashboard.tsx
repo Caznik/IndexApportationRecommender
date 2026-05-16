@@ -14,6 +14,8 @@ export function Dashboard() {
   const generate = useStore((s) => s.generate)
   const settings = useStore((s) => s.settings)
   const fetchSettings = useStore((s) => s.fetchSettings)
+  const restoreRecommendation = useStore((s) => s.restoreRecommendation)
+  const recommendationRestoredAt = useStore((s) => s.recommendationRestoredAt)
 
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([])
   const [chartLoading, setChartLoading] = useState(false)
@@ -22,6 +24,10 @@ export function Dashboard() {
   useEffect(() => {
     if (!settings) fetchSettings()
   }, [settings, fetchSettings])
+
+  useEffect(() => {
+    if (!recommendation) restoreRecommendation()
+  }, [recommendation, restoreRecommendation])
 
   useEffect(() => {
     setChartLoading(true)
@@ -62,6 +68,7 @@ export function Dashboard() {
         pctDay={pctDay}
         pctMonth={pctMonth}
         priceHistoryError={priceHistoryError}
+        restoredAt={recommendationRestoredAt}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

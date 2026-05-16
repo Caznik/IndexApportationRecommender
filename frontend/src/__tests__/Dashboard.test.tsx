@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { Dashboard } from '../pages/Dashboard'
 import { useStore } from '../store'
 import * as api from '../api'
-import type { RecommendationResult, Settings } from '../api'
+import type { RecommendationResult, Settings, RecommendationRecord } from '../api'
 
 // Mock API module — store actions call api functions internally
 vi.mock('../api')
@@ -24,10 +24,25 @@ const mockResult: RecommendationResult = {
   recommended_amount: 620, rule_triggered: '-5% band', explanation: '',
 }
 
+const mockRecord: RecommendationRecord = {
+  id: 1,
+  created_at: '2026-05-14T12:00:00',
+  ticker: 'URTH',
+  market_price: 97.4,
+  drawdown: -0.082,
+  drawdown_pct: -0.082,
+  multiplier: 1.2,
+  rule_triggered: '-5% band',
+  recommended_amount: 620,
+  executed_amount: null,
+  explanation: '',
+}
+
 beforeEach(() => {
   // Reset real store state before each test
   useStore.setState({
     recommendation: null,
+    recommendationRestoredAt: null, // forward-declared: added to store in Task 2
     recommendationLoading: false,
     recommendationError: null,
     settings: mockSettings,
@@ -40,6 +55,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockApi.getPriceHistory.mockResolvedValue([])
   mockApi.getSettings.mockResolvedValue(mockSettings)
+  mockApi.getHistory.mockResolvedValue([])
 })
 
 describe('Dashboard', () => {
@@ -105,5 +121,25 @@ describe('Dashboard', () => {
     await waitFor(() => {
       expect(screen.getByText('+27.5%')).toBeInTheDocument()
     })
+  })
+
+  it('restores recommendation on mount when history exists', async () => {
+    mockApi.getHistory.mockResolvedValue([mockRecord])
+    render(<Dashboard />)
+    await waitFor(() => expect(screen.getByText('€620')).toBeInTheDocument())
+  })
+
+  it('shows age label when recommendation is restored from history', async () => {
+    mockApi.getHistory.mockResolvedValue([mockRecord])
+    render(<Dashboard />)
+    await waitFor(() => expect(screen.getByText(/generated may/i)).toBeInTheDocument())
+  })
+
+  it('shows empty state when history is empty on mount', async () => {
+    mockApi.getHistory.mockResolvedValue([])
+    render(<Dashboard />)
+    await waitFor(() =>
+      expect(screen.getByText('No recommendation yet')).toBeInTheDocument()
+    )
   })
 })

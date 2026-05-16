@@ -9,6 +9,7 @@ interface Props {
   pctDay?: number | null
   pctMonth?: number | null
   priceHistoryError?: boolean
+  restoredAt?: string | null
 }
 
 function PriceBadge({ label, pct }: { label: string; pct: number | null | undefined }) {
@@ -33,7 +34,7 @@ function PriceBadge({ label, pct }: { label: string; pct: number | null | undefi
   )
 }
 
-export function HeroCard({ result, baseAmount, loading, error, onGenerate, pctDay, pctMonth, priceHistoryError }: Props) {
+export function HeroCard({ result, baseAmount, loading, error, onGenerate, pctDay, pctMonth, priceHistoryError, restoredAt }: Props) {
   if (loading) {
     return (
       <div className="rounded-xxl p-5 sm:p-8 bg-gradient-to-br from-grad-violet to-grad-magenta opacity-50 min-h-[160px] flex flex-col items-center justify-center">
@@ -102,6 +103,11 @@ export function HeroCard({ result, baseAmount, loading, error, onGenerate, pctDa
             <PriceBadge label="1m" pct={pctMonth} />
             {priceHistoryError && (
               <span className="text-white/40 text-xs">· market data unavailable</span>
+            )}
+            {restoredAt && (
+              <span className="text-white/40 text-xs">
+                · generated {new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(restoredAt))}
+              </span>
             )}
           </div>
         </div>
