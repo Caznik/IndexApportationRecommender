@@ -48,7 +48,7 @@ export function Dashboard() {
       label: '12m High',
       value:
         recommendation && settings
-          ? `$${(Number(recommendation.current_price) / (1 + Number(recommendation.drawdown_pct))).toFixed(2)}`
+          ? `$${(Number(recommendation.current_price) / (1 + Number(recommendation.drawdown))).toFixed(2)}`
           : null,
     },
     {
