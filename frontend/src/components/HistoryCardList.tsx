@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { RecommendationRecord } from '../api'
+import { OutcomePanel } from './OutcomePanel'
 
 interface Props {
   rows: RecommendationRecord[]
@@ -9,6 +10,7 @@ interface Props {
 export function HistoryCardList({ rows, onMarkExecuted }: Props) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [inputValue, setInputValue] = useState('')
+  const [expandedId, setExpandedId] = useState<number | null>(null)
 
   function startEdit(row: RecommendationRecord) {
     setEditingId(row.id)
@@ -28,15 +30,20 @@ export function HistoryCardList({ rows, onMarkExecuted }: Props) {
     }
   }
 
+  function toggleExpanded(id: number) {
+    setExpandedId(expandedId === id ? null : id)
+  }
+
   return (
     <div className="flex flex-col gap-3">
       {rows.map((row) => {
         const date = new Date(row.created_at).toLocaleDateString('en-US', {
           month: 'short', day: 'numeric', year: 'numeric',
         })
-        const drawdownPct = `${(Number(row.drawdown_pct) * 100).toFixed(1)}%`
-        const isDeepDrawdown = Number(row.drawdown_pct) < -0.1
+        const drawdownPct = `${Number(row.drawdown_pct).toFixed(1)}%`
+        const isDeepDrawdown = Number(row.drawdown_pct) < -10
         const isEditing = editingId === row.id
+        const isExpanded = expandedId === row.id
 
         return (
           <div key={row.id} className="bg-surface-1 rounded-xl p-4">
@@ -99,6 +106,18 @@ export function HistoryCardList({ rows, onMarkExecuted }: Props) {
                 )}
               </div>
             </div>
+            {row.executed_amount !== null && (
+              <>
+                <button
+                  onClick={() => toggleExpanded(row.id)}
+                  aria-label="toggle outcomes"
+                  className="mt-3 flex items-center gap-1 text-xs text-ink-muted hover:text-ink"
+                >
+                  Outcomes {isExpanded ? '▲' : '▼'}
+                </button>
+                {isExpanded && <OutcomePanel id={row.id} />}
+              </>
+            )}
           </div>
         )
       })}

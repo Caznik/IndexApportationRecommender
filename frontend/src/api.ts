@@ -81,3 +81,17 @@ export function markExecuted(id: number, amount: number): Promise<Recommendation
     body: JSON.stringify({ executed_amount: amount }),
   })
 }
+
+export type OutcomeSnapshot =
+  | { status: 'available'; price: number; pct: number }
+  | { status: 'pending'; days_remaining: number }
+
+export interface OutcomeResponse {
+  one_m: OutcomeSnapshot
+  three_m: OutcomeSnapshot
+  six_m: OutcomeSnapshot
+}
+
+export function getOutcomes(id: number): Promise<OutcomeResponse> {
+  return request(`/api/history/${id}/outcomes`)
+}

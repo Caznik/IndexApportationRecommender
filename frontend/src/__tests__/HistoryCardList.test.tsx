@@ -4,13 +4,19 @@ import userEvent from '@testing-library/user-event'
 import { HistoryCardList } from '../components/HistoryCardList'
 import type { RecommendationRecord } from '../api'
 
+vi.mock('../components/OutcomePanel', () => ({
+  OutcomePanel: ({ id }: { id: number }) => (
+    <div data-testid={`outcome-panel-${id}`} />
+  ),
+}))
+
 const baseRow: RecommendationRecord = {
   id: 1,
   created_at: '2026-05-15T10:00:00Z',
   ticker: 'URTH',
   market_price: 512.4,
   drawdown: -0.082,
-  drawdown_pct: -0.082,
+  drawdown_pct: -8.2,
   multiplier: 1.2,
   rule_triggered: '-5% band',
   recommended_amount: 600,
@@ -40,8 +46,8 @@ describe('HistoryCardList', () => {
     expect(screen.getByText('€550')).toBeInTheDocument()
   })
 
-  it('applies text-red-400 for deep drawdown (drawdown_pct < -0.1)', () => {
-    render(<HistoryCardList rows={[{ ...baseRow, drawdown_pct: -0.15 }]} onMarkExecuted={vi.fn()} />)
+  it('applies text-red-400 for deep drawdown (drawdown_pct < -10)', () => {
+    render(<HistoryCardList rows={[{ ...baseRow, drawdown_pct: -15.0 }]} onMarkExecuted={vi.fn()} />)
     expect(screen.getByText('-15.0%')).toHaveClass('text-red-400')
   })
 
@@ -92,5 +98,37 @@ describe('HistoryCardList', () => {
     expect(screen.getByRole('spinbutton')).toBeInTheDocument()
     await userEvent.click(editBtn2)
     expect(screen.getAllByRole('spinbutton')).toHaveLength(1)
+  })
+
+  it('does not show outcomes toggle for non-executed rows', () => {
+    render(<HistoryCardList rows={[baseRow]} onMarkExecuted={vi.fn()} />)
+    expect(
+      screen.queryByRole('button', { name: /toggle outcomes/i })
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows outcomes toggle for executed rows', () => {
+    render(
+      <HistoryCardList
+        rows={[{ ...baseRow, executed_amount: 550 }]}
+        onMarkExecuted={vi.fn()}
+      />
+    )
+    expect(
+      screen.getByRole('button', { name: /toggle outcomes/i })
+    ).toBeInTheDocument()
+  })
+
+  it('renders OutcomePanel when toggle is clicked', async () => {
+    render(
+      <HistoryCardList
+        rows={[{ ...baseRow, executed_amount: 550 }]}
+        onMarkExecuted={vi.fn()}
+      />
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: /toggle outcomes/i })
+    )
+    expect(screen.getByTestId('outcome-panel-1')).toBeInTheDocument()
   })
 })

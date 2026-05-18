@@ -4,6 +4,12 @@ import userEvent from '@testing-library/user-event'
 import { HistoryTable } from '../components/HistoryTable'
 import type { RecommendationRecord } from '../api'
 
+vi.mock('../components/OutcomePanel', () => ({
+  OutcomePanel: ({ id }: { id: number }) => (
+    <div data-testid={`outcome-panel-${id}`} />
+  ),
+}))
+
 const baseRow: RecommendationRecord = {
   id: 1,
   created_at: '2026-05-15T10:00:00Z',
@@ -61,5 +67,37 @@ describe('HistoryTable', () => {
     expect(screen.getByRole('spinbutton')).toBeInTheDocument()
     await userEvent.click(editBtn2)
     expect(screen.getAllByRole('spinbutton')).toHaveLength(1)
+  })
+
+  it('does not show outcomes toggle for non-executed rows', () => {
+    render(<HistoryTable rows={[baseRow]} onMarkExecuted={vi.fn()} />)
+    expect(
+      screen.queryByRole('button', { name: /toggle outcomes/i })
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows outcomes toggle for executed rows', () => {
+    render(
+      <HistoryTable
+        rows={[{ ...baseRow, executed_amount: 550 }]}
+        onMarkExecuted={vi.fn()}
+      />
+    )
+    expect(
+      screen.getByRole('button', { name: /toggle outcomes/i })
+    ).toBeInTheDocument()
+  })
+
+  it('renders OutcomePanel when toggle is clicked', async () => {
+    render(
+      <HistoryTable
+        rows={[{ ...baseRow, executed_amount: 550 }]}
+        onMarkExecuted={vi.fn()}
+      />
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: /toggle outcomes/i })
+    )
+    expect(screen.getByTestId('outcome-panel-1')).toBeInTheDocument()
   })
 })

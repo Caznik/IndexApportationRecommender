@@ -86,3 +86,13 @@ def get_price_history(ticker: str, days: int, db: Session) -> list[PricePoint]:
         .order_by(MarketPrice.date.asc())
     ).scalars().all()
     return [PricePoint.model_validate(r) for r in rows]
+
+
+def get_price_at_or_before(ticker: str, target_date: date, db: Session) -> Decimal | None:
+    row = db.execute(
+        select(MarketPrice)
+        .where(MarketPrice.ticker == ticker, MarketPrice.date <= target_date)
+        .order_by(MarketPrice.date.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    return row.close_price if row is not None else None

@@ -1,8 +1,8 @@
 from datetime import datetime, date
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class SettingsRead(BaseModel):
@@ -79,3 +79,26 @@ class PricePoint(BaseModel):
 
     date: date
     close_price: Decimal
+
+
+class OutcomeAvailable(BaseModel):
+    status: Literal["available"]
+    price: Decimal
+    pct: Decimal
+
+
+class OutcomePending(BaseModel):
+    status: Literal["pending"]
+    days_remaining: int
+
+
+OutcomeSnapshot = Annotated[
+    Union[OutcomeAvailable, OutcomePending],
+    Field(discriminator="status"),
+]
+
+
+class OutcomeResponse(BaseModel):
+    one_m: OutcomeSnapshot
+    three_m: OutcomeSnapshot
+    six_m: OutcomeSnapshot

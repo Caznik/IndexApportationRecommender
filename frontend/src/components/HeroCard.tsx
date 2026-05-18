@@ -81,7 +81,7 @@ export function HeroCard({ result, baseAmount, loading, error, onGenerate, pctDa
     diff !== null
       ? `${diff >= 0 ? '+' : '-'}€${Math.abs(diff).toFixed(0)}`
       : null
-  const drawdownStr = `${(Number(result.drawdown_pct) * 100).toFixed(1)}%`
+  const drawdownStr = `${Number(result.drawdown_pct).toFixed(1)}%`
 
   return (
     <div className="rounded-xxl p-5 sm:p-8 bg-gradient-to-br from-grad-violet to-grad-magenta">

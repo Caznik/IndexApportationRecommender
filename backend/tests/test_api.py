@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from app.models import MarketPrice, Settings, Recommendation
 from app.schemas import PricePoint
+from app.services.market import get_price_at_or_before
 
 
 def _seed_settings(db, base=300.0, min_=100.0, max_=1000.0, ticker="IWDA.AS", risk="balanced"):
@@ -162,3 +163,109 @@ def test_patch_history_returns_422_for_negative_amount(client, db):
     rec = _seed_recommendation(db)
     r = client.patch(f"/api/history/{rec.id}", json={"executed_amount": "-50"})
     assert r.status_code == 422
+
+
+# --- get_price_at_or_before unit tests ---
+
+def test_get_price_at_or_before_exact_match(db):
+    db.add(MarketPrice(ticker="URTH", date=date(2025, 1, 15), close_price=Decimal("100.00")))
+    db.commit()
+    result = get_price_at_or_before("URTH", date(2025, 1, 15), db)
+    assert result == Decimal("100.00")
+
+
+def test_get_price_at_or_before_nearest_before(db):
+    db.add(MarketPrice(ticker="TEST_NEAR", date=date(2025, 1, 13), close_price=Decimal("99.50")))
+    db.commit()
+    result = get_price_at_or_before("TEST_NEAR", date(2025, 1, 15), db)
+    assert result == Decimal("99.50")
+
+
+def test_get_price_at_or_before_no_data_returns_none(db):
+    result = get_price_at_or_before("TEST_NODATA", date(2025, 1, 15), db)
+    assert result is None
+
+
+def test_get_price_at_or_before_multiple_rows_returns_closest(db):
+    db.add(MarketPrice(ticker="TEST_MULTI", date=date(2025, 1, 10), close_price=Decimal("90.00")))
+    db.add(MarketPrice(ticker="TEST_MULTI", date=date(2025, 1, 13), close_price=Decimal("99.50")))
+    db.commit()
+    result = get_price_at_or_before("TEST_MULTI", date(2025, 1, 15), db)
+    assert result == Decimal("99.50")
+
+
+# --- GET /api/history/{id}/outcomes ---
+
+def _seed_executed_recommendation(db, days_old: int, market_price: str = "90.00"):
+    created = datetime.now(timezone.utc) - timedelta(days=days_old)
+    rec = Recommendation(
+        created_at=created,
+        ticker="URTH",
+        market_price=Decimal(market_price),
+        drawdown=Decimal("-0.082000"),
+        drawdown_pct=Decimal("-8.20"),
+        multiplier=Decimal("1.20"),
+        rule_triggered="-5% band",
+        recommended_amount=Decimal("620.00"),
+        executed_amount=Decimal("620.00"),
+        explanation="test",
+    )
+    db.add(rec)
+    db.commit()
+    db.refresh(rec)
+    return rec
+
+
+def test_outcomes_all_available(client, db):
+    rec = _seed_executed_recommendation(db, days_old=210)
+    rec_date = rec.created_at.date()
+    for days, price in [(30, "94.50"), (90, "91.80"), (180, "99.00")]:
+        db.add(MarketPrice(ticker="URTH", date=rec_date + timedelta(days=days), close_price=Decimal(price)))
+    db.commit()
+
+    r = client.get(f"/api/history/{rec.id}/outcomes")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["one_m"]["status"] == "available"
+    assert data["three_m"]["status"] == "available"
+    assert data["six_m"]["status"] == "available"
+    assert data["one_m"]["pct"] == "5.00"   # (94.50-90.00)/90.00*100 = 5.00
+
+
+def test_outcomes_partial_pending(client, db):
+    rec = _seed_executed_recommendation(db, days_old=60)
+    rec_date = rec.created_at.date()
+    db.add(MarketPrice(ticker="URTH", date=rec_date + timedelta(days=30), close_price=Decimal("94.50")))
+    db.commit()
+
+    r = client.get(f"/api/history/{rec.id}/outcomes")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["one_m"]["status"] == "available"
+    assert data["three_m"]["status"] == "pending"
+    assert data["six_m"]["status"] == "pending"
+    assert data["three_m"]["days_remaining"] > 0
+
+
+def test_outcomes_not_executed_returns_404(client, db):
+    rec = _seed_recommendation(db)   # executed_amount=None
+    r = client.get(f"/api/history/{rec.id}/outcomes")
+    assert r.status_code == 404
+
+
+def test_outcomes_unknown_id_returns_404(client, db):
+    r = client.get("/api/history/999/outcomes")
+    assert r.status_code == 404
+
+
+def test_outcomes_no_price_data_returns_pending_zero(client, db):
+    # Window elapsed but no price row in market_prices → pending with days_remaining=0
+    rec = _seed_executed_recommendation(db, days_old=210)
+    r = client.get(f"/api/history/{rec.id}/outcomes")
+    assert r.status_code == 200
+    data = r.json()
+    # No prices seeded, so all windows should fall back to pending with days_remaining=0
+    assert data["one_m"]["status"] == "pending"
+    assert data["one_m"]["days_remaining"] == 0
+    assert data["three_m"]["status"] == "pending"
+    assert data["six_m"]["status"] == "pending"
