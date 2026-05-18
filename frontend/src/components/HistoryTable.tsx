@@ -50,8 +50,8 @@ export function HistoryTable({ rows, onMarkExecuted }: Props) {
             const date = new Date(row.created_at).toLocaleDateString('en-US', {
               month: 'short', day: 'numeric', year: 'numeric',
             })
-            const drawdownPct = `${(Number(row.drawdown_pct) * 100).toFixed(1)}%`
-            const isDeepDrawdown = Number(row.drawdown_pct) < -0.1
+            const drawdownPct = `${Number(row.drawdown_pct).toFixed(1)}%`
+            const isDeepDrawdown = Number(row.drawdown_pct) < -10
             const isEditing = editingId === row.id
             return (
               <tr key={row.id} className="border-t border-hairline-soft">

@@ -7,7 +7,7 @@ interface Props {
 }
 
 const DOW_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-const SEVERE_DRAWDOWN = -0.1
+const SEVERE_DRAWDOWN = -10
 
 export function ContributionCalendar({ rows }: Props) {
   const nowRef = useRef(new Date())
@@ -156,7 +156,7 @@ export function ContributionCalendar({ rows }: Props) {
                           Number(record.drawdown_pct) < SEVERE_DRAWDOWN ? 'text-red-400' : 'text-ink'
                         }`}
                       >
-                        {(Number(record.drawdown_pct) * 100).toFixed(1)}%
+                        {Number(record.drawdown_pct).toFixed(1)}%
                       </span>
                       <span className="text-[10px] text-ink-muted">Multiplier</span>
                       <span className="text-[10px] text-ink">
