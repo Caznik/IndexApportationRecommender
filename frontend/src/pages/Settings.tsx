@@ -106,7 +106,7 @@ export function Settings() {
   )
 
   return (
-    <div className="max-w-lg">
+    <div className="max-w-lg mx-auto">
       <h1 className="text-2xl font-semibold tracking-tight mb-6">Settings</h1>
 
       {settingsLoading && !settings && (
