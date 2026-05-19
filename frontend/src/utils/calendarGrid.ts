@@ -2,7 +2,8 @@ import type { RecommendationRecord } from '../api'
 
 export interface CalendarDay {
   day: number
-  record: RecommendationRecord | null
+  dateKey: string
+  records: RecommendationRecord[]
 }
 
 /** `dateStr` must include a time component (e.g. ISO-8601 datetime). A bare date string like "2026-05-07" is parsed as UTC midnight and may shift one day in negative-offset timezones. */
@@ -11,19 +12,24 @@ function toLocalDateKey(dateStr: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export function buildDayMap(rows: RecommendationRecord[]): Map<string, RecommendationRecord> {
-  const executed = rows.filter(r => r.executed_amount !== null)
-  executed.sort((a, b) => a.id - b.id)
-  const map = new Map<string, RecommendationRecord>()
-  for (const r of executed) {
-    map.set(toLocalDateKey(r.created_at), r)
+export function buildDayMap(rows: RecommendationRecord[]): Map<string, RecommendationRecord[]> {
+  const map = new Map<string, RecommendationRecord[]>()
+  for (const r of rows) {
+    if (r.executed_amount === null) continue
+    const key = toLocalDateKey(r.created_at)
+    const existing = map.get(key)
+    if (existing) {
+      existing.push(r)
+    } else {
+      map.set(key, [r])
+    }
   }
   return map
 }
 
 export function buildCalendarWeeks(
   month: Date,
-  dayMap: Map<string, RecommendationRecord>,
+  dayMap: Map<string, RecommendationRecord[]>,
 ): (CalendarDay | null)[][] {
   const year = month.getFullYear()
   const monthIndex = month.getMonth()
@@ -34,7 +40,7 @@ export function buildCalendarWeeks(
   for (let i = 0; i < firstDow; i++) cells.push(null)
   for (let d = 1; d <= daysInMonth; d++) {
     const key = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-    cells.push({ day: d, record: dayMap.get(key) ?? null })
+    cells.push({ day: d, dateKey: key, records: dayMap.get(key) ?? [] })
   }
   while (cells.length < 42) cells.push(null)
 

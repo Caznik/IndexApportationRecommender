@@ -8,9 +8,10 @@ function makeRecord(
   id: number,
   created_at: string,
   executed_amount: number | null,
+  ticker = 'URTH',
 ): RecommendationRecord {
   return {
-    id, created_at, ticker: 'URTH',
+    id, created_at, ticker,
     market_price: 452.10, drawdown: -0.05, drawdown_pct: -0.05,
     multiplier: 1.0, rule_triggered: 'base', recommended_amount: 150,
     executed_amount, explanation: '',
@@ -37,6 +38,16 @@ describe('ContributionCalendar — grid and navigation', () => {
     const rows = [makeRecord(1, '2026-05-07T10:00:00Z', 150)]
     render(<ContributionCalendar rows={rows} />)
     expect(screen.getByText('€150')).toBeInTheDocument()
+  })
+
+  it('shows the summed amount when two records share the same day', () => {
+    useMay2026()
+    const rows = [
+      makeRecord(1, '2026-05-07T08:00:00Z', 100, 'IWDA.AS'),
+      makeRecord(2, '2026-05-07T20:00:00Z', 200, 'VWRA.L'),
+    ]
+    render(<ContributionCalendar rows={rows} />)
+    expect(screen.getByText('€300')).toBeInTheDocument()
   })
 
   it('does not show executed amount for rows with null executed_amount', () => {
@@ -75,6 +86,19 @@ describe('ContributionCalendar — tooltip', () => {
     await userEvent.click(screen.getByText('€150').closest('button')!)
     expect(screen.getByText('Executed')).toBeInTheDocument()
     expect(screen.getByText('$452.10')).toBeInTheDocument()
+  })
+
+  it('shows ticker label per record when multiple records share the same day', async () => {
+    useMay2026()
+    const rows = [
+      makeRecord(1, '2026-05-07T08:00:00Z', 100, 'IWDA.AS'),
+      makeRecord(2, '2026-05-07T20:00:00Z', 200, 'VWRA.L'),
+    ]
+    render(<ContributionCalendar rows={rows} />)
+    await userEvent.click(screen.getByText('€300').closest('button')!)
+    expect(screen.getByText('IWDA.AS')).toBeInTheDocument()
+    expect(screen.getByText('VWRA.L')).toBeInTheDocument()
+    expect(screen.getAllByText('Executed')).toHaveLength(2)
   })
 
   it('hides the tooltip when Escape is pressed', async () => {
