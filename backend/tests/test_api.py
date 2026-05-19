@@ -2,21 +2,30 @@ from datetime import date, timedelta, datetime, timezone
 from decimal import Decimal
 from unittest.mock import patch
 
+from sqlalchemy import select
+
 from app.models import MarketPrice, Settings, Recommendation
 from app.schemas import PricePoint
 from app.services.market import get_price_at_or_before
 
 
 def _seed_settings(db, base=300.0, min_=100.0, max_=1000.0, ticker="IWDA.AS", risk="balanced"):
-    # Use merge() so this works whether the lifespan already seeded id=1 or not.
-    db.merge(Settings(
-        id=1,
-        base_amount=Decimal(str(base)),
-        min_amount=Decimal(str(min_)),
-        max_amount=Decimal(str(max_)),
-        ticker=ticker,
-        risk_profile=risk,
-    ))
+    existing = db.execute(
+        select(Settings).where(Settings.ticker == ticker)
+    ).scalar_one_or_none()
+    if existing is None:
+        db.add(Settings(
+            base_amount=Decimal(str(base)),
+            min_amount=Decimal(str(min_)),
+            max_amount=Decimal(str(max_)),
+            ticker=ticker,
+            risk_profile=risk,
+        ))
+    else:
+        existing.base_amount = Decimal(str(base))
+        existing.min_amount = Decimal(str(min_))
+        existing.max_amount = Decimal(str(max_))
+        existing.risk_profile = risk
     db.commit()
 
 
@@ -40,30 +49,105 @@ def test_get_settings_returns_row(client, db):
     r = client.get("/api/settings")
     assert r.status_code == 200
     data = r.json()
-    assert data["base_amount"] == "300.00"
-    assert data["risk_profile"] == "balanced"
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    assert data[0]["base_amount"] == "300.00"
+    assert data[0]["risk_profile"] == "balanced"
 
 
 def test_put_settings_updates_row(client, db):
     _seed_settings(db)
-    r = client.put("/api/settings", json={
+    r = client.put("/api/settings/IWDA.AS", json={
         "base_amount": "500.00",
         "min_amount": "200.00",
         "max_amount": "2000.00",
-        "ticker": "URTH",
         "risk_profile": "aggressive",
     })
     assert r.status_code == 200
     assert r.json()["base_amount"] == "500.00"
-    assert r.json()["ticker"] == "URTH"
+    assert r.json()["ticker"] == "IWDA.AS"
 
 
 def test_get_settings_returns_seeded_defaults(client):
-    # Lifespan seeds id=1 with defaults on startup — verify they are present.
     r = client.get("/api/settings")
     assert r.status_code == 200
-    assert r.json()["ticker"] == "IWDA.AS"
-    assert r.json()["risk_profile"] == "balanced"
+    data = r.json()
+    assert isinstance(data, list)
+    tickers = [row["ticker"] for row in data]
+    assert "IWDA.AS" in tickers
+
+
+def test_post_settings_creates_new_ticker(client, db):
+    r = client.post("/api/settings", json={
+        "ticker": "VWRA",
+        "base_amount": "400.00",
+        "min_amount": "150.00",
+        "max_amount": "1500.00",
+        "risk_profile": "balanced",
+    })
+    assert r.status_code == 201
+    data = r.json()
+    assert data["ticker"] == "VWRA"
+    assert data["base_amount"] == "400.00"
+
+
+def test_post_settings_409_on_duplicate_ticker(client, db):
+    _seed_settings(db)
+    r = client.post("/api/settings", json={
+        "ticker": "IWDA.AS",
+        "base_amount": "300.00",
+        "min_amount": "100.00",
+        "max_amount": "1000.00",
+        "risk_profile": "balanced",
+    })
+    assert r.status_code == 409
+
+
+def test_delete_settings_removes_ticker(client, db):
+    client.post("/api/settings", json={
+        "ticker": "VWRA",
+        "base_amount": "400.00",
+        "min_amount": "150.00",
+        "max_amount": "1500.00",
+        "risk_profile": "balanced",
+    })
+    r = client.delete("/api/settings/VWRA")
+    assert r.status_code == 204
+    tickers = [row["ticker"] for row in client.get("/api/settings").json()]
+    assert "VWRA" not in tickers
+
+
+def test_get_history_with_ticker_filter(client, db):
+    db.add(Recommendation(
+        created_at=datetime.now(timezone.utc),
+        ticker="URTH",
+        market_price=Decimal("97.40"),
+        drawdown=Decimal("-0.082000"),
+        drawdown_pct=Decimal("-8.20"),
+        multiplier=Decimal("1.20"),
+        rule_triggered="-5% band",
+        recommended_amount=Decimal("620.00"),
+        executed_amount=None,
+        explanation="test",
+    ))
+    db.add(Recommendation(
+        created_at=datetime.now(timezone.utc),
+        ticker="VWRA",
+        market_price=Decimal("100.00"),
+        drawdown=Decimal("0.000000"),
+        drawdown_pct=Decimal("0.00"),
+        multiplier=Decimal("1.00"),
+        rule_triggered="DD_0_5",
+        recommended_amount=Decimal("300.00"),
+        executed_amount=None,
+        explanation="test",
+    ))
+    db.commit()
+    r = client.get("/api/history?ticker=URTH")
+    assert r.status_code == 200
+    data = r.json()
+    assert all(row["ticker"] == "URTH" for row in data)
+    assert len(data) == 1
 
 
 # --- History ---
@@ -81,7 +165,7 @@ def test_get_market_history_returns_prices(client, db):
     _seed_prices(db)
     with patch("app.services.market.yf.download") as mock_dl:
         mock_dl.return_value = {}
-        r = client.get("/api/market/history")
+        r = client.get("/api/market/history?ticker=IWDA.AS")
     assert r.status_code == 200
     data = r.json()
     assert len(data) > 0
@@ -96,7 +180,7 @@ def test_generate_recommendation(client, db):
     _seed_prices(db, base_price=100.0)
     with patch("app.services.market.yf.download") as mock_dl:
         mock_dl.return_value = {}
-        r = client.post("/api/recommendation/generate")
+        r = client.post("/api/recommendation/generate?ticker=IWDA.AS")
     assert r.status_code == 200
     data = r.json()
     assert "current_price" in data
@@ -113,7 +197,7 @@ def test_generate_recommendation_stored_in_history(client, db):
     _seed_prices(db)
     with patch("app.services.market.yf.download") as mock_dl:
         mock_dl.return_value = {}
-        client.post("/api/recommendation/generate")
+        client.post("/api/recommendation/generate?ticker=IWDA.AS")
         r = client.get("/api/history")
     assert r.status_code == 200
     assert len(r.json()) == 1

@@ -9,5 +9,5 @@ router = APIRouter(prefix="/api/recommendation", tags=["recommendation"])
 
 
 @router.post("/generate", response_model=RecommendationResult)
-def generate(db: Session = Depends(get_db)):
-    return generate_recommendation(db)
+def generate(ticker: str, db: Session = Depends(get_db)):
+    return generate_recommendation(db, ticker)

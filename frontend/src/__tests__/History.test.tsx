@@ -23,9 +23,17 @@ const mockRow: RecommendationRecord = {
 
 beforeEach(() => {
   useStore.setState({
-    history: [], historyLoading: false, historyError: null,
-    recommendation: null, recommendationLoading: false, recommendationError: null,
-    settings: null, settingsLoading: false, settingsError: null,
+    history: [],
+    historyLoading: false,
+    historyError: null,
+    settings: [],
+    activeTicker: null,
+    recommendations: {},
+    recommendationRestoredAt: {},
+    recommendationLoading: false,
+    recommendationError: null,
+    settingsLoading: false,
+    settingsError: null,
   })
   vi.clearAllMocks()
 })
@@ -88,5 +96,26 @@ describe('History', () => {
     mockApi.getHistory.mockResolvedValue([mockRow])
     render(<History />)
     await waitFor(() => expect(screen.getAllByText('—')[0]).toBeInTheDocument())
+  })
+
+  it('shows ticker filter pills when settings has profiles', async () => {
+    const profile = { id: 1, base_amount: 500, min_amount: 100, max_amount: 1000, ticker: 'URTH', risk_profile: 'balanced' as const }
+    useStore.setState({ settings: [profile] })
+    mockApi.getHistory.mockResolvedValue([])
+    render(<History />)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^all$/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /^urth$/i })).toBeInTheDocument()
+    })
+  })
+
+  it('clicking a ticker pill calls fetchHistory with that ticker', async () => {
+    const profile = { id: 1, base_amount: 500, min_amount: 100, max_amount: 1000, ticker: 'URTH', risk_profile: 'balanced' as const }
+    useStore.setState({ settings: [profile] })
+    mockApi.getHistory.mockResolvedValue([])
+    render(<History />)
+    await waitFor(() => screen.getByRole('button', { name: /^urth$/i }))
+    await userEvent.click(screen.getByRole('button', { name: /^urth$/i }))
+    await waitFor(() => expect(mockApi.getHistory).toHaveBeenCalledWith('URTH'))
   })
 })

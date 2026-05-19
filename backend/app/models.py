@@ -10,6 +10,7 @@ from app.database import Base
 
 class Settings(Base):
     __tablename__ = "settings"
+    __table_args__ = (UniqueConstraint("ticker", name="uq_settings_ticker"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     base_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)

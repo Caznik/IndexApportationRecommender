@@ -16,10 +16,11 @@ from app.routers import history, market, recommendation, settings
 async def lifespan(app: FastAPI):
     db: Session = SessionLocal()
     try:
-        row = db.execute(select(Settings).where(Settings.id == 1)).scalar_one_or_none()
+        row = db.execute(
+            select(Settings).where(Settings.ticker == "IWDA.AS")
+        ).scalar_one_or_none()
         if row is None:
             db.add(Settings(
-                id=1,
                 base_amount=Decimal("300.00"),
                 min_amount=Decimal("100.00"),
                 max_amount=Decimal("1000.00"),

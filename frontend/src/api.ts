@@ -45,33 +45,47 @@ export interface PricePoint {
 }
 
 async function request<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const res = init !== undefined ? await fetch(input, init) : await fetch(input)
+  const res = await fetch(input, init)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  if (res.status === 204) return undefined as T
   return res.json()
 }
 
-export function generateRecommendation(): Promise<RecommendationResult> {
-  return request('/api/recommendation/generate', { method: 'POST' })
+export function generateRecommendation(ticker: string): Promise<RecommendationResult> {
+  return request(`/api/recommendation/generate?ticker=${encodeURIComponent(ticker)}`, { method: 'POST' })
 }
 
-export function getSettings(): Promise<Settings> {
+export function getSettings(): Promise<Settings[]> {
   return request('/api/settings')
 }
 
-export function saveSettings(update: SettingsUpdate): Promise<Settings> {
+export function createSettings(body: SettingsUpdate): Promise<Settings> {
   return request('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+export function saveSettings(ticker: string, update: Omit<SettingsUpdate, 'ticker'>): Promise<Settings> {
+  return request(`/api/settings/${encodeURIComponent(ticker)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(update),
   })
 }
 
-export function getHistory(): Promise<RecommendationRecord[]> {
-  return request('/api/history')
+export function deleteSettings(ticker: string): Promise<void> {
+  return request(`/api/settings/${encodeURIComponent(ticker)}`, { method: 'DELETE' })
 }
 
-export function getPriceHistory(): Promise<PricePoint[]> {
-  return request('/api/market/history')
+export function getHistory(ticker?: string): Promise<RecommendationRecord[]> {
+  const qs = ticker ? `?ticker=${encodeURIComponent(ticker)}` : ''
+  return request(`/api/history${qs}`)
+}
+
+export function getPriceHistory(ticker: string): Promise<PricePoint[]> {
+  return request(`/api/market/history?ticker=${encodeURIComponent(ticker)}`)
 }
 
 export function markExecuted(id: number, amount: number): Promise<RecommendationRecord> {

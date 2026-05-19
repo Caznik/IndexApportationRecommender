@@ -73,10 +73,12 @@ def calculate_recommendation(
     )
 
 
-def generate_recommendation(db: Session) -> RecommendationResult:
-    settings_row = db.execute(select(Settings).where(Settings.id == 1)).scalar_one_or_none()
+def generate_recommendation(db: Session, ticker: str) -> RecommendationResult:
+    settings_row = db.execute(
+        select(Settings).where(Settings.ticker == ticker)
+    ).scalar_one_or_none()
     if settings_row is None:
-        raise HTTPException(status_code=404, detail="Settings not initialised")
+        raise HTTPException(status_code=404, detail=f"No settings profile for ticker {ticker}")
     settings = SettingsRead.model_validate(settings_row)
 
     ensure_prices_fresh(settings.ticker, db)

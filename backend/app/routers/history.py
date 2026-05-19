@@ -20,10 +20,11 @@ router = APIRouter(prefix="/api/history", tags=["history"])
 
 
 @router.get("", response_model=list[RecommendationRecord])
-def get_history(db: Session = Depends(get_db)):
-    rows = db.execute(
-        select(Recommendation).order_by(Recommendation.created_at.desc())
-    ).scalars().all()
+def get_history(ticker: str | None = None, db: Session = Depends(get_db)):
+    query = select(Recommendation).order_by(Recommendation.created_at.desc())
+    if ticker is not None:
+        query = query.where(Recommendation.ticker == ticker)
+    rows = db.execute(query).scalars().all()
     return rows
 
 

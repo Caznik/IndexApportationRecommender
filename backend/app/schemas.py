@@ -17,10 +17,10 @@ class SettingsRead(BaseModel):
 
 
 class SettingsUpdate(BaseModel):
+    """PUT body — updates amounts and risk profile. Ticker is the URL key."""
     base_amount: Decimal
     min_amount: Decimal
     max_amount: Decimal
-    ticker: str
     risk_profile: Literal["conservative", "balanced", "aggressive"]
 
     @field_validator("base_amount", "min_amount", "max_amount")
@@ -35,6 +35,38 @@ class SettingsUpdate(BaseModel):
         if self.min_amount > self.max_amount:
             raise ValueError("min_amount must not exceed max_amount")
         return self
+
+
+class SettingsCreate(BaseModel):
+    """POST body — creates a new ticker profile."""
+    base_amount: Decimal
+    min_amount: Decimal
+    max_amount: Decimal
+    ticker: str
+    risk_profile: Literal["conservative", "balanced", "aggressive"]
+
+    @field_validator("base_amount", "min_amount", "max_amount")
+    @classmethod
+    def must_be_positive(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("must be greater than 0")
+        return v
+
+    @model_validator(mode="after")
+    def min_lte_max(self) -> "SettingsCreate":
+        if self.min_amount > self.max_amount:
+            raise ValueError("min_amount must not exceed max_amount")
+        return self
+
+    @field_validator("ticker")
+    @classmethod
+    def normalize_ticker(cls, v: str) -> str:
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("ticker must not be empty")
+        if len(stripped) > 20:
+            raise ValueError("ticker must not exceed 20 characters")
+        return stripped.upper()
 
 
 class RecommendationResult(BaseModel):

@@ -11,7 +11,7 @@
 Contribution calendar — show a simple monthly view of when contributions were made and how much. Helps users see their DCA rhythm at a glance without going into the History table.
 
 ## Workflow Status
-- current_state: IMPLEMENTING
+- current_state: DONE
 - replanning_used: false
 - changes_requested_source: null
 
